@@ -1,0 +1,15 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "full-stack basic",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Shivani Yadav",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
