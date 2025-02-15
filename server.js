@@ -3,11 +3,21 @@ import authRoutes from "./routes/user.routes.js"
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { DB_NAME } from "./constants.js";
+import cookieParser from "cookie-parser"
+import cors from "cors";
 const app = express();
 
 dotenv.config();
-// app.use(express.json());
-// app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+  credentials: true
+}));
+app.use(express.json({
+  limit: "16kb"
+}));
+app.use(express.urlencoded({extended:true, limit: "16kb"}));
+app.use(express.static("public"));
+app.use(cookieParser());
 
 mongoose
   .connect(`${process.env.MONGO_URI}/${DB_NAME}`)
@@ -18,5 +28,5 @@ app.get("/api", authRoutes);
 const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
-    console.log(`Server is listening on port: http://localhost:${process.env.PORT}`)
+    console.log(`Server is listening on port: http://localhost:${port}`)
 })
