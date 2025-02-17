@@ -51,5 +51,38 @@ export const registerUser = async (req, res) => {
       res.status(500).json({ message: "Error updating avatar" });
     }
   };
+
+  export const removeAvatar = async (req, res) => {
+    try {
+      const user = await User.findById(req.user._id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      user.avatar = ""; // Reset avatar
+      await user.save();
+  
+      res.json({ message: "Avatar removed successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Error removing avatar" });
+    }
+  }
+
+  export const defaultAvatar = async (req, res) => {
+    try {
+      const { avatarUrl } = req.body;
+      if (!defaultAvatars.includes(avatarUrl)) {
+        return res.status(400).json({ message: "Invalid avatar selection" });
+      }
+  
+      const user = await User.findById(req.user._id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      user.avatar = avatarUrl;
+      await user.save();
+  
+      res.json({ message: "Default avatar set successfully", avatar: user.avatar });
+    } catch (error) {
+      res.status(500).json({ message: "Error setting default avatar" });
+    }
+  }
   
   
