@@ -1,14 +1,15 @@
 import { User } from "../models/user.model.js";
 import {asyncHandler} from "../utils/asyncHandler.js";
 import bcrypt from "bcrypt"
-import { OAuth2Client } from "google-auth-library";
-import axios from "axios"
+import {ApiError} from "../utils/ApiError.js"
+import setCookie from "../utils/setCookie.js";
+import jwt from "jsonwebtoken"
 // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
 export const registerUser = asyncHandler(async (req, res) => {
   try {
-    const { username, email, gender, password } = req.body;
+    const { username, email, gender, avatar, password } = req.body;
 
     let user = await User.findOne({ email }).select("+password");
     if (user)
@@ -22,15 +23,20 @@ export const registerUser = asyncHandler(async (req, res) => {
       username,
       email,
       gender,
+      avatar: gender === 'male' ? 'Male Avatar' : 'Female Avatar',
       password,
       password: hashedPassword,
     });
 
+    const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '7d', // Expiration time for token (7 days here)
+    });
+
     res.status(200).json({
       success: true,
-      message:
-        "User Register Successfully",
-      user,
+      message: "Register Successful",
+      token: jwtToken, // Send token in response
+      user, // You can send user data too
     });
   } catch (error) {
     return res.status(500).json({
@@ -39,6 +45,79 @@ export const registerUser = asyncHandler(async (req, res) => {
     });
   }
   });
+  
+ 
+  export const login = asyncHandler(async (req,res, next) => {
+    try {
+      const { email, password } = req.body;
+  
+      const user = await User.findOne({ email }).select("+password");
+      if (!user) 
+        return res
+      .status(400)
+      .json({ success: false, message: "User not exists" });
+  
+      const isMatched = await bcrypt.compare(password, user.password);
+      if (!isMatched) 
+        return res
+      .status(400)
+      .json({ success: false, message: "Wrong credentials" });
+  
+      const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: '7d', // Expiration time for token (7 days here)
+      });
+  
+      res.status(200).json({
+        success: true,
+        message: "Login Successful",
+        token: jwtToken, // Send token in response
+        user, // You can send user data too
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
+    }
+  })
+
+  export const uploadAvatar = async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+  
+      // Get the uploaded image URL from the file path
+      const avatarUrl = req.file.path;
+  
+      // Log the user ID to confirm it's correct
+      console.log('User ID from token:', req.user._id);
+  
+      // Find the user by ID
+      const user = await User.findById(req.user._id);
+  
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+  
+      // Update the user's avatar URL
+      user.avatar = avatarUrl;
+  
+      // Save the updated user data
+      await user.save();
+  
+      res.status(200).json({
+        success: true,
+        message: 'Avatar uploaded successfully',
+        avatar: avatarUrl,
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      res.status(500).json({ success: false, message: 'Server error, please try again' });
+    }
+  };
+  
+  
   export const googleAuth = async (req, res) => {
     try {
       const { token } = req.body;
@@ -80,69 +159,4 @@ export const registerUser = asyncHandler(async (req, res) => {
       console.error("Google Auth Error:", error);
       res.status(500).json({ success: false, message: "Google authentication failed" });
     }
-  };  
-  // export const googleAuth = async (req, res) => {
-  //   try {
-  //     const { access_token } = req.body;
-  //     if (!access_token) {
-  //       return res.status(400).json({ success: false, message: "No access token provided" });
-  //     }
-  
-  //     // Verify Google access token
-  //     const tokenInfoResponse = await axios.get(
-  //       `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${access_token}`
-  //     );
-  //     const userInfoResponse = await axios.get(
-  //       `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${access_token}`
-  //     );
-  
-  //     const tokenInfo = tokenInfoResponse.data;
-  //     const userData = userInfoResponse.data;
-  
-  //     if (!tokenInfo || !userData) {
-  //       return res.status(401).json({ success: false, message: "Invalid token" });
-  //     }
-  
-  //     const { username, email, picture } = userData;
-  //     if (!email) {
-  //       return res.status(404).json({ success: false, message: "Email not found" });
-  //     }
-  
-  //     const nameArray = name.split(" ");
-  //     let user = await User.findOne({ email });
-  
-  //     if (!user) {
-  //       // Create new user if not found
-  //       user = await User.create({
-  //         username,
-  //         email,
-  //         avatar: picture || null,
-  //       });
-  //     }
-  
-  //     // Generate JWT Token
-  //     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-  //       expiresIn: "7d",
-  //     });
-  
-  //     // Set Cookie (if needed)
-  //     res.cookie("token", token, {
-  //       httpOnly: true,
-  //       secure: process.env.NODE_ENV === "production",
-  //       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  //     });
-  
-  //     res.status(200).json({
-  //       success: true,
-  //       message: user ? "Login Successful" : "Registered Successfully",
-  //       token,
-  //       user,
-  //     });
-  //   } catch (error) {
-  //     console.error("Google Auth Error:", error);
-  //     res.status(500).json({ success: false, message: "Authentication failed" });
-  //   }
-  // };
- 
-  
-  
+  }; 
