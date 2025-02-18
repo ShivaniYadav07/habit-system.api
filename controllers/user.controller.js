@@ -1,88 +1,148 @@
 import { User } from "../models/user.model.js";
+import {asyncHandler} from "../utils/asyncHandler.js";
+import bcrypt from "bcrypt"
+import { OAuth2Client } from "google-auth-library";
+import axios from "axios"
+// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-export const registerUser = async (req, res) => {
-    try {
-      const { name, email, password } = req.body;
-  
-      const existingUser = await User.findOne({ email });
-      if (existingUser) return res.status(400).json({ message: "User already exists" });
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      const newUser = new User({ name, email, password: hashedPassword });
-      await newUser.save();
-  
-      res.status(201).json({ message: "User registered successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Server error" });
-    }
-  };
-  
+
+export const registerUser = asyncHandler(async (req, res) => {
+  try {
+    const { username, email, gender, password } = req.body;
+
+    let user = await User.findOne({ email }).select("+password");
+    if (user)
+      return res
+        .status(400)
+        .json({ success: false, message: "User already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    user = await User.create({
+      username,
+      email,
+      gender,
+      password,
+      password: hashedPassword,
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        "User Register Successfully",
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+  });
   export const googleAuth = async (req, res) => {
     try {
-      const { name, email, googleId, avatar } = req.body;
+      const { token } = req.body;
+      if (!token) {
+        return res.status(400).json({ success: false, message: "Token is required" });
+      }
+  
+      // Verify Google token
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+  
+      const { username, email, picture, sub: googleId } = ticket.getPayload();
   
       let user = await User.findOne({ email });
   
       if (!user) {
-        user = new User({ name, email, googleId, avatar: null }); // Avatar initially null
-        await user.save();
+        user = await User.create({
+          username,
+          email,
+          googleId,
+          avatar: picture || null,
+        });
       }
   
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+      // Generate JWT token
+      const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
   
-      res.json({ token, user });
+      res.status(200).json({
+        success: true,
+        message: "Google authentication successful",
+        token: jwtToken,
+        user,
+      });
     } catch (error) {
-      res.status(500).json({ message: "Google authentication failed" });
+      console.error("Google Auth Error:", error);
+      res.status(500).json({ success: false, message: "Google authentication failed" });
     }
-  };
-
-  export const updateAvatar = async (req, res) => {
-    try {
-      const { avatar } = req.body; // Avatar URL ya Base64 image lega
-      const userId = req.user.id; // JWT middleware se user ID milega
+  };  
+  // export const googleAuth = async (req, res) => {
+  //   try {
+  //     const { access_token } = req.body;
+  //     if (!access_token) {
+  //       return res.status(400).json({ success: false, message: "No access token provided" });
+  //     }
   
-      if (!avatar) return res.status(400).json({ message: "Avatar is required" });
+  //     // Verify Google access token
+  //     const tokenInfoResponse = await axios.get(
+  //       `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${access_token}`
+  //     );
+  //     const userInfoResponse = await axios.get(
+  //       `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${access_token}`
+  //     );
   
-      const user = await User.findByIdAndUpdate(userId, { avatar }, { new: true });
+  //     const tokenInfo = tokenInfoResponse.data;
+  //     const userData = userInfoResponse.data;
   
-      res.json({ message: "Avatar updated successfully", user });
-    } catch (error) {
-      res.status(500).json({ message: "Error updating avatar" });
-    }
-  };
-
-  export const removeAvatar = async (req, res) => {
-    try {
-      const user = await User.findById(req.user._id);
-      if (!user) return res.status(404).json({ message: "User not found" });
+  //     if (!tokenInfo || !userData) {
+  //       return res.status(401).json({ success: false, message: "Invalid token" });
+  //     }
   
-      user.avatar = ""; // Reset avatar
-      await user.save();
+  //     const { username, email, picture } = userData;
+  //     if (!email) {
+  //       return res.status(404).json({ success: false, message: "Email not found" });
+  //     }
   
-      res.json({ message: "Avatar removed successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Error removing avatar" });
-    }
-  }
-
-  export const defaultAvatar = async (req, res) => {
-    try {
-      const { avatarUrl } = req.body;
-      if (!defaultAvatars.includes(avatarUrl)) {
-        return res.status(400).json({ message: "Invalid avatar selection" });
-      }
+  //     const nameArray = name.split(" ");
+  //     let user = await User.findOne({ email });
   
-      const user = await User.findById(req.user._id);
-      if (!user) return res.status(404).json({ message: "User not found" });
+  //     if (!user) {
+  //       // Create new user if not found
+  //       user = await User.create({
+  //         username,
+  //         email,
+  //         avatar: picture || null,
+  //       });
+  //     }
   
-      user.avatar = avatarUrl;
-      await user.save();
+  //     // Generate JWT Token
+  //     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+  //       expiresIn: "7d",
+  //     });
   
-      res.json({ message: "Default avatar set successfully", avatar: user.avatar });
-    } catch (error) {
-      res.status(500).json({ message: "Error setting default avatar" });
-    }
-  }
+  //     // Set Cookie (if needed)
+  //     res.cookie("token", token, {
+  //       httpOnly: true,
+  //       secure: process.env.NODE_ENV === "production",
+  //       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  //     });
+  
+  //     res.status(200).json({
+  //       success: true,
+  //       message: user ? "Login Successful" : "Registered Successfully",
+  //       token,
+  //       user,
+  //     });
+  //   } catch (error) {
+  //     console.error("Google Auth Error:", error);
+  //     res.status(500).json({ success: false, message: "Authentication failed" });
+  //   }
+  // };
+ 
   
   

@@ -35,10 +35,13 @@ const userSchema = new mongoose.Schema(
         },
         avatar: {
             type: String,
-            required: true,
+            required: false,
             default: ""
         },
         refreshToken: {
+            type: String
+        },
+        accessToken: {
             type: String
         }, 
         createdAt: {

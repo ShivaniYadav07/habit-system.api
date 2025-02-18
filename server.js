@@ -1,10 +1,11 @@
 import express from "express"
 import authRoutes from "./routes/user.routes.js"
 import dotenv from "dotenv";
-import mongoose from "mongoose";
-import { DB_NAME } from "./constants.js";
 import cookieParser from "cookie-parser"
 import cors from "cors";
+import connectedToDb from "./db/db.js";
+import passport from "passport";
+import session from "express-session";
 const app = express();
 
 dotenv.config();
@@ -18,15 +19,26 @@ app.use(express.json({
 app.use(express.urlencoded({extended:true, limit: "16kb"}));
 app.use(express.static("public"));
 app.use(cookieParser());
+app.use(
+  session({
+    secret: process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 
-mongoose
-  .connect(`${process.env.MONGO_URI}/${DB_NAME}`)
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log(err));
-app.get("/api", authRoutes);
+app.use(passport.initialize());
+app.use(passport.session());
 
+connectedToDb()
+app.use("/api/v1", authRoutes);
+app.get("/", (req, res) => {
+  res.send("Server is working fine");
+});
 const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
     console.log(`Server is listening on port: http://localhost:${port}`)
 })
+
+
