@@ -5,22 +5,28 @@ import {ApiError} from "../utils/ApiError.js"
 import jwt from "jsonwebtoken"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import {ApiResponse} from "../utils/ApiResponse.js"
-// const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const generateAccessandRefreshToken = async(userId) => {
+const generateAccessandRefreshToken = async (userId) => {
   try {
-    const user = await User.findById(userId)
-    const accessToken = user.generateAccessToken()
-    const refreshToken = user.generateRefreshToken()
-    user.refreshToken = refreshToken
-    user.save({validateBeforeSave: false})
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
 
-    return {accessToken, refreshToken}
+    const accessToken = user.generateAccessToken(); // Now works!
+    const refreshToken = user.generateRefreshToken(); // Now works!
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
   } catch (error) {
-    throw new ApiError(500, "Something went wrong while generating refresh and access token")
-    
+    console.error("Token Generation Error:", error);
+    throw new ApiError(500, "Something went wrong while generating refresh and access token");
   }
-}
+};
+
+
 
 export const registerUser = asyncHandler(async (req, res) => {
   try {
@@ -99,8 +105,6 @@ export const registerUser = asyncHandler(async (req, res) => {
           200,
            {
           user: loggedInUser,
-           accessToken,
-           refreshToken,
            token: jwtToken,
         },
         "User loggedIn Successfull"
@@ -115,27 +119,34 @@ export const registerUser = asyncHandler(async (req, res) => {
   })
 
   export const logout = asyncHandler(async(req, res) => {
-    await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        $set: {
-          refreshToken: undefined
+    try {
+      await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          $set: {
+            refreshToken: undefined
+          }
+        },
+        {
+          new: true
         }
-      },
-      {
-        new: true
+      )
+      const options = {
+        httpOnly: true,
+        secure: true
       }
-    )
-    const options = {
-      httpOnly: true,
-      secure: true
+  
+      return res
+      .status(200)
+      .clearCookie("accessToken", options)
+      .clearCookie("refreshToken", options)
+      .json(new ApiResponse(200, {}, "User logged Out"))
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
     }
-
-    return res
-    .status(200)
-    .clearCookie("accessToken", accessToken, options)
-    .clearCookie("refreshToken", refreshToken, options)
-    .json(new ApiResponse(200, {}, "User logged Out"))
    })
   export const uploadAvatar = asyncHandler(async (req, res) => {
       try {
