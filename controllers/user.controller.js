@@ -2,11 +2,25 @@ import { User } from "../models/user.model.js";
 import {asyncHandler} from "../utils/asyncHandler.js";
 import bcrypt from "bcrypt"
 import {ApiError} from "../utils/ApiError.js"
-import setCookie from "../utils/setCookie.js";
 import jwt from "jsonwebtoken"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {ApiResponse} from "../utils/ApiResponse.js"
 // const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const generateAccessandRefreshToken = async(userId) => {
+  try {
+    const user = await User.findById(userId)
+    const accessToken = user.generateAccessToken()
+    const refreshToken = user.generateRefreshToken()
+    user.refreshToken = refreshToken
+    user.save({validateBeforeSave: false})
+
+    return {accessToken, refreshToken}
+  } catch (error) {
+    throw new ApiError(500, "Something went wrong while generating refresh and access token")
+    
+  }
+}
 
 export const registerUser = asyncHandler(async (req, res) => {
   try {
@@ -64,16 +78,34 @@ export const registerUser = asyncHandler(async (req, res) => {
       .status(400)
       .json({ success: false, message: "Wrong credentials" });
   
+      const {accessToken, refreshToken} = await generateAccessandRefreshToken(user._id)
+
+      const loggedInUser = await User.findById(user._id).select("-password -refrshToken")
+
+      const options = {
+        httpOnly: true,
+        secure: true
+      }
       const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '7d', // Expiration time for token (7 days here)
+        expiresIn: '7d', 
       });
   
-      res.status(200).json({
-        success: true,
-        message: "Login Successful",
-        token: jwtToken, // Send token in response
-        user, // You can send user data too
-      });
+      return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+           {
+          user: loggedInUser,
+           accessToken,
+           refreshToken,
+           token: jwtToken,
+        },
+        "User loggedIn Successfull"
+      )
+      );
     } catch (error) {
       return res.status(500).json({
         success: false,
@@ -82,8 +114,30 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
   })
 
-   
-  export const uploadAvatar = async (req, res) => {
+  export const logout = asyncHandler(async(req, res) => {
+    await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          refreshToken: undefined
+        }
+      },
+      {
+        new: true
+      }
+    )
+    const options = {
+      httpOnly: true,
+      secure: true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", accessToken, options)
+    .clearCookie("refreshToken", refreshToken, options)
+    .json(new ApiResponse(200, {}, "User logged Out"))
+   })
+  export const uploadAvatar = asyncHandler(async (req, res) => {
       try {
         if (!req.file) {
           return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -123,11 +177,11 @@ export const registerUser = asyncHandler(async (req, res) => {
         console.error('Error uploading avatar:', error);
         res.status(500).json({ success: false, message: 'Server error, please try again' });
       }
-  };
+  });
   
   
   
-  export const googleAuth = async (req, res) => {
+  export const googleAuth = asyncHandler(async (req, res) => {
     try {
       const { token } = req.body;
       if (!token) {
@@ -168,4 +222,4 @@ export const registerUser = asyncHandler(async (req, res) => {
       console.error("Google Auth Error:", error);
       res.status(500).json({ success: false, message: "Google authentication failed" });
     }
-  }; 
+  }); 

@@ -1,16 +1,27 @@
 import jwt from "jsonwebtoken";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+import { User } from "../models/user.model.js";
 
-export const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token) return res.status(401).json({ message: "Unauthorized" });
-
+export const verifyToken = asyncHandler(async(req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { _id: decoded.id };  // Use '_id' to match the field in your MongoDB
+    req.cookie?.accessToken || req.header("Authorization")?.replace("Bearer", "")
+  
+    if(!token) {
+      throw new ApiError(401, "Unauthorized request")
+    }
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+  
+    const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+  
+    if(!user) {
+      throw new ApiError(401, "Invaid Access Token")
+    }
+    req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: "Invalid token" });
-  }
-};
+    
+  }throw new ApiError(401, error?.message || "Invalid Access Token")
+
+})
 
