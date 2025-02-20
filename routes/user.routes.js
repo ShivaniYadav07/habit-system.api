@@ -1,5 +1,5 @@
 import express from "express";
-import { googleAuth, login, logout, registerUser, uploadAvatar } from "../controllers/user.controller.js";
+import { googleAuth, login, logout, refreshAccessToken, registerUser, uploadAvatar } from "../controllers/user.controller.js";
 // import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { upload } from "../middleware/multer.middleware.js";
 import { verifyToken } from "../middleware/auth.js";
@@ -10,6 +10,7 @@ const router = express.Router();
 router.route("/register").post(registerUser)
 router.post("/google", googleAuth);
 router.post("/login", login);
+router.post("/refresh-token", refreshAccessToken);
 router.post("/logout", verifyToken, logout)
 router.post('/upload-avatar', verifyToken, upload.single('avatar'), uploadAvatar);
 // router.put("/update-avatar", verifyToken, updateAvatar);
