@@ -36,26 +36,36 @@ export const registerUser = asyncHandler(async (req, res) => {
         .status(400)
         .json({ success: false, message: "User already exists" });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    user = await User.create({
+        user = await User.create({
       username,
       email,
       gender,
       avatar: gender === 'male' ? 'Male Avatar' : 'Female Avatar',
-      password,
-      password: hashedPassword,
+      password,  
+      habits: [],  
+      streak: 0,  
+      longestStreak: 0, 
     });
 
     const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '7d', // Expiration time for token (7 days here)
+      expiresIn: '7d',
     });
 
     res.status(200).json({
       success: true,
       message: "Register Successful",
-      token: jwtToken, // Send token in response
-      user, // You can send user data too
+      token: jwtToken,
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        gender: user.gender,
+        avatar: user.avatar,
+        habits: user.habits,
+        streak: user.streak,
+        longestStreak: user.longestStreak, 
+        createdAt: user.createdAt,
+      }
     });
   } catch (error) {
     return res.status(500).json({
@@ -63,57 +73,63 @@ export const registerUser = asyncHandler(async (req, res) => {
       message: error.message || "Internal Server Error",
     });
   }
-  });
-  
-  export const login = asyncHandler(async (req,res, next) => {
-    try {
-      const { email, password } = req.body;
-  
-      const user = await User.findOne({ email }).select("+password");
-      if (!user) 
-        return res
-      .status(400)
-      .json({ success: false, message: "User not exists" });
-  
-      const isMatched = await bcrypt.compare(password, user.password);
-      if (!isMatched) 
-        return res
-      .status(400)
-      .json({ success: false, message: "Wrong credentials" });
-  
-      const {accessToken, refreshToken} = await generateAccessandRefreshToken(user._id)
+});
 
-      const loggedInUser = await User.findById(user._id).select("-password -refrshToken")
-
-      const options = {
-        httpOnly: true,
-        secure: true
-      }
-      const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '7d', 
-      });
   
-      return res
+export const login = asyncHandler(async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1️⃣ User fetch karein aur password include karein
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User does not exist" });
+    }
+    console.log("Entered Password:", password);
+    console.log("Stored Hashed Password:", user.password);
+    
+    const isMatched = await bcrypt.compare(password, user.password);
+    console.log("Password Match Result:", isMatched);
+    
+    if (!isMatched) {
+      return res.status(400).json({ success: false, message: "Wrong credentials" });
+    }
+
+    // 3️⃣ Tokens Generate Karein
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    // 4️⃣ Secure Cookie Options
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    };
+
+    // 5️⃣ User details password ke bina bhejein
+    const loggedInUser = await User.findById(user._id)
+      .select("-password -refreshToken");
+
+    // 6️⃣ Response return karein
+    return res
       .status(200)
       .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", refreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-           {
-          user: loggedInUser,
-           token: jwtToken,
-        },
-        "User loggedIn Successfull"
-      )
-      );
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Internal Server Error",
+      .json({
+        success: true,
+        message: "User logged in successfully",
+        user: loggedInUser,
+        token: accessToken, // 🛑 Only Access Token, Refresh Token nahi bhejna JSON me
       });
-    }
-  })
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+});
+
 
   export const logout = asyncHandler(async(req, res) => {
     try {

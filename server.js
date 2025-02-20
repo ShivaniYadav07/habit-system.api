@@ -6,6 +6,8 @@ import cors from "cors";
 import connectedToDb from "./db/db.js";
 import passport from "passport";
 import session from "express-session";
+import habitRoutes from "./routes/habit.routes.js";
+import habitProgressRoutes from "./routes/habitProgress.routes.js"
 const app = express();
 
 dotenv.config();
@@ -31,7 +33,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 connectedToDb()
-app.use("/api/v1", authRoutes);
+app.use("/api/v1", authRoutes, habitRoutes, habitProgressRoutes);
 app.get("/", (req, res) => {
   res.send("Server is working fine");
 });

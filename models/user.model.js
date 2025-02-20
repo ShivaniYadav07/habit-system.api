@@ -34,11 +34,21 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    longestStreak: {
+      type: Number,
+      default: 0
+    },
     avatar: {
       type: String,
       required: false,
       default: "",
     },
+    habits: [  
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Habit",
+      }
+    ],
     refreshToken: {
       type: String,
     },
@@ -52,9 +62,10 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10); 
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
+
 
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);

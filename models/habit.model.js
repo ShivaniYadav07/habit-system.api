@@ -1,5 +1,4 @@
-const mongoose = require("mongoose");
-
+import mongoose from "mongoose";
 const habitSchema = new mongoose.Schema(
     {
         user: {
@@ -17,7 +16,7 @@ const habitSchema = new mongoose.Schema(
         },
         frequency: {
             type: String,
-            enum: ["daily", "weekly", "custom"],
+            enum: ["daily", "weekly", "monthly", "yearly"],
             required: true
         },
         streak: {
@@ -31,6 +30,10 @@ const habitSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "HabitProgress"
         }],
+        lastCompleted: { 
+            type: Date, 
+            default: null 
+          },
         createdAt: {
             type: Date,
             default: Date.now
