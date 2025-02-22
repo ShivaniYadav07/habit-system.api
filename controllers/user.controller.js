@@ -168,35 +168,33 @@ export const login = asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, message: "No file uploaded" });
       }
   
-      // Upload the file to Cloudinary
+      // ✅ Upload the file to Cloudinary
       const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
-  
-      if (!cloudinaryResponse) {
+      console.log("🛠 Cloudinary Response:", cloudinaryResponse)
+      if (!cloudinaryResponse || !cloudinaryResponse.url) {
         return res.status(500).json({ success: false, message: "Failed to upload to Cloudinary" });
       }
   
-      const avatarUrl = cloudinaryResponse.url;
+      const avatarUrl = cloudinaryResponse.url; // ✅ Extract URL
+      console.log("✅ Avatar URL from Cloudinary:", avatarUrl);
   
-      // Log the user ID from token
-      console.log("User ID from token:", req.user._id);
-  
-      // Find the user by ID
+      // ✅ Find user in DB and update avatar
       const user = await User.findById(req.user._id);
       if (!user) {
         return res.status(404).json({ success: false, message: "User not found" });
       }
   
-      // Update the user's avatar URL
       user.avatar = avatarUrl;
       await user.save();
   
+      // ✅ Send back correct response
       res.status(200).json({
         success: true,
         message: "Avatar uploaded successfully",
-        avatar: avatarUrl,
+        avatar: avatarUrl,  // ✅ Ensure the frontend gets the correct URL
       });
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      console.error("❌ Error uploading avatar:", error);
       res.status(500).json({ success: false, message: "Server error, please try again" });
     }
   });
