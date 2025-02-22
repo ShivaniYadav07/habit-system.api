@@ -204,48 +204,7 @@ export const login = asyncHandler(async (req, res) => {
       }
   });
   
-  export const googleAuth = asyncHandler(async (req, res) => {
-    try {
-      const { token } = req.body;
-      if (!token) {
-        return res.status(400).json({ success: false, message: "Token is required" });
-      }
   
-      // Verify Google token
-      const ticket = await client.verifyIdToken({
-        idToken: token,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-  
-      const { username, email, picture, sub: googleId } = ticket.getPayload();
-  
-      let user = await User.findOne({ email });
-  
-      if (!user) {
-        user = await User.create({
-          username,
-          email,
-          googleId,
-          avatar: picture || null,
-        });
-      }
-  
-      // Generate JWT token
-      const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
-      });
-  
-      res.status(200).json({
-        success: true,
-        message: "Google authentication successful",
-        token: jwtToken,
-        user,
-      });
-    } catch (error) {
-      console.error("Google Auth Error:", error);
-      res.status(500).json({ success: false, message: "Google authentication failed" });
-    }
-  }); 
 
   export const refreshAccessToken = asyncHandler(async (req,res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken

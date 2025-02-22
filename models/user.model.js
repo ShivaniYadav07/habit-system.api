@@ -20,11 +20,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    googleId: {
-      type: String,
-      required: false,
-      unique: true,
-    },
     gender: {
       type: String,
       required: true,
