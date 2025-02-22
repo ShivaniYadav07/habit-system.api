@@ -162,47 +162,45 @@ export const login = asyncHandler(async (req, res) => {
     }
    })
 
-  export const uploadAvatar = asyncHandler(async (req, res) => {
-      try {
-        if (!req.file) {
-          return res.status(400).json({ success: false, message: 'No file uploaded' });
-        }
-  
-        // Upload the file to Cloudinary
-        const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
-  
-        if (!cloudinaryResponse) {
-          return res.status(500).json({ success: false, message: 'Failed to upload to Cloudinary' });
-        }
-  
-        const avatarUrl = cloudinaryResponse.url;  // Cloudinary provides the URL in response
-  
-        // Log the user ID to confirm it's correct
-        console.log('User ID from token:', req.user._id);
-  
-        // Find the user by ID
-        const user = await User.findById(req.user._id);
-  
-        if (!user) {
-          return res.status(404).json({ success: false, message: 'User not found' });
-        }
-  
-        // Update the user's avatar URL
-        user.avatar = avatarUrl;
-  
-        // Save the updated user data
-        await user.save();
-  
-        res.status(200).json({
-          success: true,
-          message: 'Avatar uploaded successfully',
-          avatar: avatarUrl,
-        });
-      } catch (error) {
-        console.error('Error uploading avatar:', error);
-        res.status(500).json({ success: false, message: 'Server error, please try again' });
+   export const uploadAvatar = asyncHandler(async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: "No file uploaded" });
       }
+  
+      // Upload the file to Cloudinary
+      const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
+  
+      if (!cloudinaryResponse) {
+        return res.status(500).json({ success: false, message: "Failed to upload to Cloudinary" });
+      }
+  
+      const avatarUrl = cloudinaryResponse.url;
+  
+      // Log the user ID from token
+      console.log("User ID from token:", req.user._id);
+  
+      // Find the user by ID
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+  
+      // Update the user's avatar URL
+      user.avatar = avatarUrl;
+      await user.save();
+  
+      res.status(200).json({
+        success: true,
+        message: "Avatar uploaded successfully",
+        avatar: avatarUrl,
+      });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      res.status(500).json({ success: false, message: "Server error, please try again" });
+    }
   });
+  
   
   
 
