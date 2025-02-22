@@ -40,7 +40,7 @@ export const registerUser = asyncHandler(async (req, res) => {
       username,
       email,
       gender,
-      avatar: gender === 'male' ? 'Male Avatar' : 'Female Avatar',
+      avatar,
       password,  
       habits: [],  
       streak: 0,  
