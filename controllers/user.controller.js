@@ -85,11 +85,11 @@ export const login = asyncHandler(async (req, res) => {
     if (!user) {
       return res.status(400).json({ success: false, message: "User does not exist" });
     }
-    console.log("Entered Password:", password);
-    console.log("Stored Hashed Password:", user.password);
+    // console.log("Entered Password:", password);
+    // console.log("Stored Hashed Password:", user.password);
     
     const isMatched = await bcrypt.compare(password, user.password);
-    console.log("Password Match Result:", isMatched);
+    // console.log("Password Match Result:", isMatched);
     
     if (!isMatched) {
       return res.status(400).json({ success: false, message: "Wrong credentials" });
