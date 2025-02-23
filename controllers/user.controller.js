@@ -47,14 +47,24 @@ export const registerUser = asyncHandler(async (req, res) => {
       longestStreak: 0, 
     });
 
-    const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '7d',
-    });
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
 
-    res.status(200).json({
+    // ✅ Secure Cookie Options
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    };
+
+
+    res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json({
       success: true,
       message: "Register Successful",
-      token: jwtToken,
       user: {
         _id: user._id,
         username: user.username,
@@ -63,11 +73,12 @@ export const registerUser = asyncHandler(async (req, res) => {
         avatar: user.avatar,
         habits: user.habits,
         streak: user.streak,
-        longestStreak: user.longestStreak, 
+        longestStreak: user.longestStreak,
         createdAt: user.createdAt,
-      }
+      },
+      token: accessToken, // Only send accessToken in response
     });
-  } catch (error) {
+} catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
@@ -164,18 +175,22 @@ export const login = asyncHandler(async (req, res) => {
 
    export const uploadAvatar = asyncHandler(async (req, res) => {
     try {
+      console.log("🛠 Received File:", req.file);
+      console.log("🛠 Full Request Body:", req.body);
+  
       if (!req.file) {
         return res.status(400).json({ success: false, message: "No file uploaded" });
       }
   
       // ✅ Upload the file to Cloudinary
       const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
-      console.log("🛠 Cloudinary Response:", cloudinaryResponse)
+      console.log("🛠 Cloudinary Response:", cloudinaryResponse);
+  
       if (!cloudinaryResponse || !cloudinaryResponse.url) {
         return res.status(500).json({ success: false, message: "Failed to upload to Cloudinary" });
       }
   
-      const avatarUrl = cloudinaryResponse.url; // ✅ Extract URL
+      const avatarUrl = cloudinaryResponse.url;
       console.log("✅ Avatar URL from Cloudinary:", avatarUrl);
   
       // ✅ Find user in DB and update avatar
@@ -187,12 +202,25 @@ export const login = asyncHandler(async (req, res) => {
       user.avatar = avatarUrl;
       await user.save();
   
-      // ✅ Send back correct response
-      res.status(200).json({
-        success: true,
-        message: "Avatar uploaded successfully",
-        avatar: avatarUrl,  // ✅ Ensure the frontend gets the correct URL
-      });
+      // ✅ Generate new access token after avatar update
+      const newAccessToken = user.generateAccessToken();
+  
+      // ✅ Secure Cookie Options
+      const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      };
+  
+      res
+        .status(200)
+        .cookie("accessToken", newAccessToken, options)
+        .json({
+          success: true,
+          message: "Avatar uploaded successfully",
+          avatar: avatarUrl,
+          token: newAccessToken, // ✅ Send updated token
+        });
     } catch (error) {
       console.error("❌ Error uploading avatar:", error);
       res.status(500).json({ success: false, message: "Server error, please try again" });
@@ -200,8 +228,6 @@ export const login = asyncHandler(async (req, res) => {
   });
   
   
-  
-
   export const refreshAccessToken = asyncHandler(async (req,res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
