@@ -175,25 +175,17 @@ export const login = asyncHandler(async (req, res) => {
 
    export const uploadAvatar = asyncHandler(async (req, res) => {
     try {
-      console.log("🛠 Received File:", req.file);
-      console.log("🛠 Full Request Body:", req.body);
-  
       if (!req.file) {
         return res.status(400).json({ success: false, message: "No file uploaded" });
       }
   
-      // ✅ Upload the file to Cloudinary
       const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
-      console.log("🛠 Cloudinary Response:", cloudinaryResponse);
-  
+      
       if (!cloudinaryResponse || !cloudinaryResponse.url) {
         return res.status(500).json({ success: false, message: "Failed to upload to Cloudinary" });
       }
   
       const avatarUrl = cloudinaryResponse.url;
-      console.log("✅ Avatar URL from Cloudinary:", avatarUrl);
-  
-      // ✅ Find user in DB and update avatar
       const user = await User.findById(req.user._id);
       if (!user) {
         return res.status(404).json({ success: false, message: "User not found" });
@@ -202,10 +194,8 @@ export const login = asyncHandler(async (req, res) => {
       user.avatar = avatarUrl;
       await user.save();
   
-      // ✅ Generate new access token after avatar update
       const newAccessToken = user.generateAccessToken();
   
-      // ✅ Secure Cookie Options
       const options = {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

@@ -17,7 +17,6 @@ export const verifyToken = (req, res, next) => {
     req.user = decodedToken; // ✅ Store user data
     next();
   } catch (error) {
-    console.error("❌ Token Verification Failed:", error.message);
     return res.status(401).json({ success: false, message: "Invalid Access Token" });
   }
 };
