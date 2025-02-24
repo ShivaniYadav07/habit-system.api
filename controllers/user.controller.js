@@ -261,3 +261,33 @@ export const login = asyncHandler(async (req, res) => {
       throw new ApiError(401, error?.message || "Invalid refresh token")
     }
   })
+
+  export const updateAvatar = asyncHandler(async (req, res) => {
+    try {
+      const { avatarUrl } = req.body; // DiceBear ka avatar yahan se milega
+  
+      if (!avatarUrl) {
+        return res.status(400).json({ success: false, message: "Avatar URL is required" });
+      }
+  
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+  
+      user.avatar = avatarUrl;
+      await user.save();
+  
+      const newAccessToken = user.generateAccessToken();
+  
+      res.status(200).json({
+        success: true,
+        message: "Avatar updated successfully",
+        avatar: avatarUrl,
+        token: newAccessToken, // ✅ Send updated token
+      });
+    } catch (error) {
+      console.error("❌ Error updating avatar:", error);
+      res.status(500).json({ success: false, message: "Server error, please try again" });
+    }
+  });
