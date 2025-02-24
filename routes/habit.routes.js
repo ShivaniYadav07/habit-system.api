@@ -5,7 +5,7 @@ import { createHabit, getUserHabits, updateHabit, completeHabit, deleteHabit } f
 const router = express.Router();
 
 router.post("/create", verifyToken, createHabit);
-router.get("/", verifyToken, getUserHabits);
+router.get("/gethabit", verifyToken, getUserHabits);
 router.put("/update/:habitId", verifyToken, updateHabit);
 router.put("/complete", verifyToken, completeHabit);
 router.delete("/delete/:habitId", verifyToken, deleteHabit);

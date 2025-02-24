@@ -1,44 +1,7 @@
 import { Habit } from "../models/habit.model.js";
 import { User } from "../models/user.model.js";
 import { HabitProgress } from "../models/habitprogress.model.js";
-// const calculateStreaks = (progress) => {
-//     if (!progress.length) return { currentStreak: 0, longestStreak: 0 };
-  
-//     progress = progress.map(date => new Date(date).setHours(0, 0, 0, 0)); // Normalize dates
-//     progress.sort((a, b) => a - b); // Sort dates in ascending order
-  
-//     let currentStreak = 0;
-//     let longestStreak = 0;
-//     let tempStreak = 1;
-  
-//     for (let i = 1; i < progress.length; i++) {
-//       const prevDate = new Date(progress[i - 1]);
-//       prevDate.setDate(prevDate.getDate() + 1); // Expecting next day
-  
-//       if (progress[i] === prevDate.getTime()) {
-//         tempStreak++;
-//       } else {
-//         longestStreak = Math.max(longestStreak, tempStreak);
-//         tempStreak = 1; // Reset but don't erase past streaks
-//       }
-//     }
-  
-//     longestStreak = Math.max(longestStreak, tempStreak);
-  
-//     // Check if current streak is active (i.e., last entry was yesterday or today)
-//     const lastDate = new Date(progress[progress.length - 1]);
-//     const yesterday = new Date();
-//     yesterday.setDate(yesterday.getDate() - 1);
-//     yesterday.setHours(0, 0, 0, 0);
-  
-//     if (lastDate.getTime() === yesterday.getTime() || lastDate.getTime() === new Date().setHours(0, 0, 0, 0)) {
-//       currentStreak = tempStreak;
-//     }
-  
-//     return { currentStreak, longestStreak };
-//   };
-  
-// 1. Create a Habit
+
 export const createHabit = async (req, res) => {
     try {
       const { habits } = req.body;  
@@ -84,7 +47,6 @@ export const createHabit = async (req, res) => {
     }
   };
   
-// 2. Get All Habits for a User
 export const getUserHabits = async (req, res) => {
   try {
     const habits = await Habit.find({ user: req.user._id }).populate("progress");
@@ -95,7 +57,7 @@ export const getUserHabits = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-// 3. Update Habit Details
+
 export const updateHabit = async (req, res) => {
   try {
     const { habitId } = req.params;

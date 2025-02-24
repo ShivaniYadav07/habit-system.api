@@ -6,7 +6,6 @@ export const verifyToken = (req, res, next) => {
       req.cookies?.accessToken || 
       req.header("Authorization")?.replace("Bearer ", "");
 
-    console.log("🔹 Extracted Token:", token);
 
     if (!token) {
       return res.status(401).json({ success: false, message: "Unauthorized request" });
